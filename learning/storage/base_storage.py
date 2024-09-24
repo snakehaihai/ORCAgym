@@ -1,45 +1,66 @@
-""" Store data for different loop
-Design consideration: change the original "has-a" relationship of
-LT->rollout->transition to parallel. Transition stores all the needed data for
-every step and will be cleared/updated every step and passed to rollout and
-longterm Rollout store data for every iteration, generate batch for learning
-Longterm stores needed data from transition, and probably also generate batches
+""" 
+存储不同循环的数据
+设计考虑：将原始的“拥有”关系（LT->rollout->transition）改为并行关系。Transition
+存储每一步所需的所有数据，并在每一步后被清除/更新，然后传递给rollout和longterm。
+Rollout存储每次迭代的数据，生成用于学习的批次。
+Longterm存储来自Transition的必要数据，并可能也生成批次。
 """
 
-
 class BaseStorage:
-    """ This class is a skeleton for an arbitrary storage type. """
+    """ 
+    这是一个任意存储类型的骨架类。
+    """
 
     class Transition:
-        """ Transition storage class.
-        i.e. store data for each STEP of ALL agents
+        """ 
+        Transition存储类。
+        即存储所有代理每一步的数据。
         """
         def __init__(self):
-            """ Define all the data you need to store in __init__
+            """ 
+            在初始化方法中定义所有需要存储的数据。
             """
             raise NotImplementedError
 
         def clear(self):
+            """ 
+            清除存储的数据，通过重新调用初始化方法。
+            """
             self.__init__()
 
     def __init__(self, max_storage, device='cpu'):
-        self.device = device
-        self.max_storage = max_storage
-        # fill_count keeps track of how much storage is filled with actual data
-        # anything after the fill_count is stale and should be ignored
+        """
+        初始化BaseStorage类。
+
+        参数:
+            max_storage (int): 存储的最大容量。
+            device (str): 计算设备，默认为'cpu'，可选'cuda'。
+        """
+        self.device = device  # 设置计算设备
+        self.max_storage = max_storage  # 设置存储的最大容量
+        # fill_count用于跟踪已填充的存储量
+        # fill_count之后的任何数据都是陈旧的，应被忽略
         self.fill_count = 0
 
     def add_transitions(self, transition: Transition):
-        """ Add current transition to LT storage
-        Store variables according to the __init__
+        """ 
+        将当前的Transition添加到长期存储中。
+        根据初始化方法存储变量。
+
+        参数:
+            transition (Transition): 当前的Transition实例。
         """
-        self.fill_count += 1
+        self.fill_count += 1  # 增加填充计数
         raise NotImplementedError
 
     def clear(self):
+        """ 
+        清除存储的数据，将填充计数重置为0。
+        """
         self.fill_count = 0
 
     def mini_batch_generator(self):
-        """ Generate mini batch for learning
+        """ 
+        生成用于学习的小批量数据。
         """
         raise NotImplementedError
