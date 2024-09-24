@@ -1,107 +1,106 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES.
-# All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice,
-# this list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-# THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2021 ETH Zurich, Nikita Rudin
+import torch  # 导入PyTorch库
 
-import torch
-
-from .base_storage import BaseStorage
+from .base_storage import BaseStorage  # 从当前包中导入BaseStorage基类
 
 
 class RolloutStorage(BaseStorage):
-    """ A standard rollout storage, implemented for for PPO.
+    """ 
+    标准的Rollout存储类，实现用于PPO算法。
     """
+    
     class Transition:
+        """ 
+        Transition存储类。
+        即存储所有代理每一步的数据。
+        """
         def __init__(self):
-            self.observations = None
-            self.critic_observations = None
-            self.actions = None
-            self.rewards = None
-            self.dones = None
-            self.values = None
-            self.actions_log_prob = None
-            self.action_mean = None
-            self.action_sigma = None
+            """ 
+            初始化Transition实例，定义需要存储的数据。
+            """
+            self.observations = None  # 当前观测
+            self.critic_observations = None  # Critic使用的观测
+            self.actions = None  # 执行动作
+            self.rewards = None  # 收到的奖励
+            self.dones = None  # 完成标志（是否结束）
+            self.values = None  # Critic评估的值
+            self.actions_log_prob = None  # 动作的对数概率
+            self.action_mean = None  # 动作的均值（用于高斯策略）
+            self.action_sigma = None  # 动作的标准差（用于高斯策略）
 
         def clear(self):
+            """ 
+            清除存储的数据，通过重新调用初始化方法。
+            """
             self.__init__()
 
     def __init__(self, num_envs, num_transitions_per_env, obs_shape,
                  privileged_obs_shape, actions_shape, device='cpu'):
+        """
+        初始化RolloutStorage类。
 
-        self.device = device
+        参数:
+            num_envs (int): 并行环境的数量。
+            num_transitions_per_env (int): 每个环境要存储的过渡数量。
+            obs_shape (tuple): 观测的形状。
+            privileged_obs_shape (tuple or list): 额外（特权）观测的形状，用于Critic。
+            actions_shape (tuple): 动作的形状。
+            device (str): 计算设备，默认为'cpu'，可选'cuda'。
+        """
+        self.device = device  # 设置计算设备
 
-        self.obs_shape = obs_shape
-        self.privileged_obs_shape = privileged_obs_shape
-        self.actions_shape = actions_shape
+        self.obs_shape = obs_shape  # 观测的形状
+        self.privileged_obs_shape = privileged_obs_shape  # 特权观测的形状
+        self.actions_shape = actions_shape  # 动作的形状
 
-        # * Core
+        # * 核心存储
         self.observations = torch.zeros(num_transitions_per_env, num_envs,
-                                        *obs_shape, device=self.device)
+                                        *obs_shape, device=self.device)  # 存储观测
         if privileged_obs_shape[0] is not None:
             self.privileged_observations = torch.zeros(
                 num_transitions_per_env, num_envs, *privileged_obs_shape,
-                device=self.device)
+                device=self.device)  # 存储特权观测
         else:
-            self.privileged_observations = None
+            self.privileged_observations = None  # 如果没有特权观测，则设置为None
 
         self.rewards = torch.zeros(num_transitions_per_env, num_envs,
-                                   device=self.device)
+                                   device=self.device)  # 存储奖励
         self.actions = torch.zeros(num_transitions_per_env, num_envs,
-                                   *actions_shape, device=self.device)
+                                   *actions_shape, device=self.device)  # 存储动作
         self.dones = torch.zeros(num_transitions_per_env, num_envs,
-                                 device=self.device).byte()
+                                 device=self.device).byte()  # 存储完成标志
 
-        # * For PPO
+        # * 用于PPO的额外存储
         self.actions_log_prob = torch.zeros(num_transitions_per_env, num_envs,
-                                            1, device=self.device)
+                                            1, device=self.device)  # 存储动作的对数概率
         self.values = torch.zeros(num_transitions_per_env, num_envs,
-                                  device=self.device)
+                                  device=self.device)  # 存储Critic评估的值
         self.returns = torch.zeros(num_transitions_per_env, num_envs,
-                                   device=self.device)
+                                   device=self.device)  # 存储计算得到的回报
         self.advantages = torch.zeros(num_transitions_per_env, num_envs,
-                                      device=self.device)
+                                      device=self.device)  # 存储优势值
         self.mu = torch.zeros(num_transitions_per_env, num_envs,
-                              *actions_shape, device=self.device)
+                              *actions_shape, device=self.device)  # 存储动作均值
         self.sigma = torch.zeros(num_transitions_per_env, num_envs,
-                                 *actions_shape, device=self.device)
+                                 *actions_shape, device=self.device)  # 存储动作标准差
 
-        self.num_transitions_per_env = num_transitions_per_env
-        self.num_envs = num_envs
-        # * fill count indexes the current fill of the storage.
-        # * for rollout storage, this implicitly indicates the step as well.
-        self.fill_count = 0
+        self.num_transitions_per_env = num_transitions_per_env  # 每个环境的过渡数量
+        self.num_envs = num_envs  # 环境数量
+        self.fill_count = 0  # 填充计数，跟踪当前存储中填充的数据量
 
     def add_transitions(self, transition: Transition):
+        """
+        将一个Transition实例添加到存储中。
+
+        参数:
+            transition (Transition): 当前的Transition实例。
+        
+        异常:
+            AssertionError: 当存储已满时抛出。
+        """
         if self.fill_count >= self.num_transitions_per_env:
-            raise AssertionError("Rollout buffer overflow")
+            raise AssertionError("Rollout buffer overflow")  # 防止存储溢出
+
+        # 将Transition中的数据复制到相应的存储位置
         self.observations[self.fill_count].copy_(transition.observations)
         if self.privileged_observations is not None:
             self.privileged_observations[self.fill_count].copy_(
@@ -114,47 +113,75 @@ class RolloutStorage(BaseStorage):
             transition.actions_log_prob.view(-1, 1))
         self.mu[self.fill_count].copy_(transition.action_mean)
         self.sigma[self.fill_count].copy_(transition.action_sigma)
-        self.fill_count += 1
+        self.fill_count += 1  # 增加填充计数
 
     def clear(self):
-        self.fill_count = 0
+        """
+        清除存储中的所有数据，将填充计数重置为0。
+        """
+        self.fill_count = 0  # 重置填充计数
 
     def compute_returns(self, last_values, gamma, lam):
+        """
+        计算回报和优势值，用于PPO的策略更新。
+
+        参数:
+            last_values (torch.Tensor): 最后一步的值估计。
+            gamma (float): 折扣因子。
+            lam (float): GAE的衰减因子。
+        """
         advantage = 0
         for fill_count in reversed(range(self.num_transitions_per_env)):
             if fill_count == self.num_transitions_per_env - 1:
-                next_values = last_values
+                next_values = last_values  # 如果是最后一个时间步，使用最后的值估计
             else:
-                next_values = self.values[fill_count + 1]
-            next_is_not_terminal = 1.0 - self.dones[fill_count].float()
+                next_values = self.values[fill_count + 1]  # 否则，使用下一步的值估计
+            next_is_not_terminal = 1.0 - self.dones[fill_count].float()  # 检查是否非终止状态
             delta = (self.rewards[fill_count]
                      + next_is_not_terminal * gamma * next_values
-                     - self.values[fill_count])
-            advantage = delta + next_is_not_terminal * gamma * lam * advantage
-            self.returns[fill_count] = advantage + self.values[fill_count]
+                     - self.values[fill_count])  # 计算TD误差
+            advantage = delta + next_is_not_terminal * gamma * lam * advantage  # 计算优势值
+            self.returns[fill_count] = advantage + self.values[fill_count]  # 计算回报
 
-        # * Compute and normalize the advantages
-        self.advantages = self.returns - self.values
+        # * 计算并标准化优势值
+        self.advantages = self.returns - self.values  # 优势值 = 回报 - 值
         self.advantages = ((self.advantages - self.advantages.mean())
-                           / (self.advantages.std() + 1e-8))
+                           / (self.advantages.std() + 1e-8))  # 标准化优势值
 
     def get_statistics(self):
+        """
+        获取存储中的统计信息，如平均轨迹长度和平均奖励。
+
+        返回:
+            tuple: (平均轨迹长度, 平均奖励)
+        """
         done = self.dones
-        done[-1] = 1
-        flat_dones = done.permute(1, 0, 2).reshape(-1, 1)
+        done[-1] = 1  # 确保最后一个时间步标记为完成
+        flat_dones = done.permute(1, 0, 2).reshape(-1, 1)  # 重排并展平完成标志
         done_indices = torch.cat((flat_dones.new_tensor([-1],
                                                         dtype=torch.int64),
-                                  flat_dones.nonzero()[:, 0]))
-        trajectory_lengths = (done_indices[1:] - done_indices[:-1])
-        return trajectory_lengths.float().mean(), self.rewards.mean()
+                                  flat_dones.nonzero()[:, 0]))  # 获取完成的索引
+        trajectory_lengths = (done_indices[1:] - done_indices[:-1])  # 计算轨迹长度
+        return trajectory_lengths.float().mean(), self.rewards.mean()  # 返回平均轨迹长度和平均奖励
 
     def mini_batch_generator(self, num_mini_batches, num_epochs=8):
-        batch_size = self.num_envs * self.num_transitions_per_env
-        mini_batch_size = batch_size // num_mini_batches
-        indices = torch.randperm(num_mini_batches*mini_batch_size,
-                                 requires_grad=False,
-                                 device=self.device)
+        """
+        生成用于学习的小批量数据。
 
+        参数:
+            num_mini_batches (int): 小批量的数量。
+            num_epochs (int): 每个小批量要迭代的次数（默认为8）。
+
+        生成器:
+            每个小批量的数据，包括观测、特权观测、动作、目标值、优势值、回报、旧动作对数概率、旧动作均值和旧动作标准差。
+        """
+        batch_size = self.num_envs * self.num_transitions_per_env  # 总批量大小
+        mini_batch_size = batch_size // num_mini_batches  # 每个小批量的大小
+        indices = torch.randperm(num_mini_batches * mini_batch_size,
+                                 requires_grad=False,
+                                 device=self.device)  # 生成随机索引
+
+        # 展平特征
         observations = self.observations.flatten(0, 1)
         if self.privileged_observations is not None:
             critic_observations = self.privileged_observations.flatten(0, 1)
@@ -172,10 +199,11 @@ class RolloutStorage(BaseStorage):
         for epoch in range(num_epochs):
             for i in range(num_mini_batches):
 
-                start = i*mini_batch_size
-                end = (i+1)*mini_batch_size
-                batch_idx = indices[start:end]
+                start = i * mini_batch_size
+                end = (i + 1) * mini_batch_size
+                batch_idx = indices[start:end]  # 获取当前小批量的索引
 
+                # 根据索引获取小批量的数据
                 obs_batch = observations[batch_idx]
                 critic_observations_batch = critic_observations[batch_idx]
                 actions_batch = actions[batch_idx]
@@ -185,6 +213,8 @@ class RolloutStorage(BaseStorage):
                 advantages_batch = advantages[batch_idx]
                 old_mu_batch = old_mu[batch_idx]
                 old_sigma_batch = old_sigma[batch_idx]
+
+                # 生成并返回小批量数据
                 yield obs_batch, critic_observations_batch, actions_batch, \
                     target_values_batch, advantages_batch, returns_batch, \
                     old_actions_log_prob_batch, old_mu_batch, old_sigma_batch
