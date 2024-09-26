@@ -1,32 +1,24 @@
-{
+“{
     "method": "random",
-    "_comment_method": "优化方法，'random' 表示使用随机搜索方法",
     "metric": {
         "name": "Train/mean_reward",
-        "_comment_metric_name": "指标名称，这里是训练过程中的平均奖励",
-        "goal": "maximize",
-        "_comment_metric_goal": "优化目标，这里是最大化平均奖励"
+        "goal": "maximize"
     },
     "run_cap": 10,
-    "_comment_run_cap": "运行上限，表示最多进行10次实验运行",
     "parameters": {
         "train_cfg.runner.max_iterations": {
-            "values": [10],
-            "_comment_max_iterations": "训练配置中运行器的最大迭代次数，固定为10次迭代"
+            "values": [10]
         },
         "env_cfg.env.episode_length_s": {
             "min": 2,
-            "max": 10,
-            "_comment_episode_length_s": "环境配置中每个回合的时长，2秒到10秒"
+            "max": 10
         },
-        "train_cfg.policy.reward.weights.lin_vel_z": {
-            "min": 0.1,
-            "max": 1.0,
-            "_comment_lin_vel_z": "策略奖励的线速度Z轴权重，范围从0.1到1.0"
+        "train_cfg.policy.reward.weights.lin_vel_z":{
+            "min":0.1,
+            "max":1.0
         },
         "env_cfg.env.num_envs": {
-            "values": [64],
-            "_comment_num_envs": "环境配置中并行环境的数量，固定为64"
+            "values": [64]
         }
     }
-}
+}”
