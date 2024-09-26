@@ -1,4 +1,4 @@
-“{
+"{
     "method": "random",
     "metric": {
         "name": "Train/mean_reward",
@@ -21,4 +21,4 @@
             "values": [64]
         }
     }
-}”
+}"
